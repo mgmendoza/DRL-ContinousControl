@@ -6,18 +6,8 @@ The high-level steps taken in training an agent following the '<Arm_ContinousCon
 
 * Step 1: Importing packages and the Unity environment
 * Step 2: Evaluate the state and action space
-* Step 3: Establish baseline using a random action policy. 
-* Step 4: Implement learning DDPG algorithm: 
-	* Initialize the replay memory
-	* Initialize action-value function with random weights
-	* Initialize target action-value weights
-	* Choose an action using epsilon-greedy methods
-	* Perform an action
-	* Measure reward	
-	* Prepare next state and store experience tuple
-	* Obtain random minibatch of tuples
-	* Set target and update 
-The task is episodic, and in order to solve the environment, the agent must get an average score of +30 over 100 consecutive episodes
+* Step 3: Establish baseline using a random action policy
+* Step 4: Implement learning DDPG algorithm
 * Step 5: Loading the trained model into the environment to watch it perform
 
 ### Learning Algorithm & Code Structure :
@@ -29,21 +19,16 @@ The code consists of :
 * model.py : Here is where the Actor-Critic policy NN architectures are defined. There are two fully connected Deep Neural Network using the PyTorch Framework. It uses a forward neural netowrk architecture with reLu activation functions: '<fc1_units=256, fc2_units=128>.'
 
 * ddpg_agent.py : Here is where the learning algorithm is implemented: 
-	* Initialize an agent object
-	* Return actions for given state as per current policy
-	* Update value parameters using given batch of experience tuples or model parameters
-	* Initialize a ReplayBuffer
-	* Randomly sample a batch of experiences from memory
 
-You will start by specifying the Hyperparameters:
+You will start by specifying the Hyperparameters. Varying this parameters was larg part of the training:
 ```
-BUFFER_SIZE = int(1e5)  # replay buffer size
-BATCH_SIZE = 512        # minibatch size
+BUFFER_SIZE = int(1e6)  # replay buffer size
+BATCH_SIZE = 128        # minibatch size
 GAMMA = 0.99            # discount factor
 TAU = 1e-3              # for soft update of target parameters
 LR_ACTOR = 1e-4         # learning rate of the actor 
-LR_CRITIC = 1e-3        # learning rate of the critic
-WEIGHT_DECAY = 0        # L2 weight decay
+LR_CRITIC = 1e-4        # learning rate of the critic
+WEIGHT_DECAY = 0.0      # L2 weight decay
 ```
 In ```class Agent():``` is where the agent interacts with and learns from the environment:
 
@@ -71,7 +56,16 @@ the _init_ function to interact and learn from the environment, this function wi
         # Critic Network (w/ Target Network)
         self.critic_local = Critic(state_size, action_size, random_seed).to(device)
         self.critic_target = Critic(state_size, action_size, random_seed).to(device)
-        self.critic_optimizer = optim.Adam(self.critic_local.parameters(), lr=LR_CRITIC, weight_decay=WEIGHT_DECAY)    
+        self.critic_optimizer = optim.Adam(self.critic_local.parameters(), lr=LR_CRITIC, weight_decay=WEIGHT_DECAY)
+
+        self.hard_copy_weights(self.actor_target, self.actor_local)
+        self.hard_copy_weights(self.critic_target, self.critic_local)
+        
+        # Noise process
+        self.noise = OUNoise(action_size, random_seed)
+
+        # Replay memory
+        self.memory = ReplayBuffer(action_size, BUFFER_SIZE, BATCH_SIZE, random_seed)   
 ```
 the _step_ function saves experience in replay memory, and use random sample from buffer to learn:
 ```
@@ -89,7 +83,6 @@ the _step_ function saves experience in replay memory, and use random sample fro
 the _act_ function returns actions for given state as per current policy, here we can call noise and gradient clipping
 ```
     def act(self, state, add_noise=True):
-
         state = torch.from_numpy(state).float().to(device)
         self.actor_local.eval()
         with torch.no_grad():
@@ -107,7 +100,7 @@ the _act_ function returns actions for given state as per current policy, here w
 the _learn_ function to update value parameters and compute targets for current states, minimize losses and update target network
 ```
     def learn(self, experiences, gamma):
-
+        """Update policy and value parameters using given batch of experience tuples.
         Q_targets = r + γ * critic_target(next_state, actor_target(next_state))
         where:
             actor_target(state) -> action
@@ -132,6 +125,7 @@ the _learn_ function to update value parameters and compute targets for current 
         # Minimize the loss
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
+        torch.nn.utils.clip_grad_norm_(self.critic_local.parameters(), 1)
         self.critic_optimizer.step()
 
         # ---------------------------- update actor ---------------------------- #
@@ -145,8 +139,8 @@ the _learn_ function to update value parameters and compute targets for current 
 
         # ----------------------- update target networks ----------------------- #
         self.soft_update(self.critic_local, self.critic_target, TAU)
-        self.soft_update(self.actor_local, self.actor_target, TAU)                     
-            
+        self.soft_update(self.actor_local, self.actor_target, TAU)  
+        
 ```
 the _soft_ function updates the value from the target Neural Network from the local network weights (That's part of the Fixed Q Targets technique)
 
@@ -167,12 +161,13 @@ the _soft_ function updates the value from the target Neural Network from the lo
 
 Here we implement the Ornstein-Uhlenbeck process to generate the temporarilly correlated exploiration for efficiecy in control porblems with inertia, noise is introducted. 
 
-* Futher explanation: Given that the set of actions are continuous and not discrete, exploration methods based on random uniform sampling would not yield the best results. This was an advantage that off-policy DDPG algorithm offers when treating the problem of exploration independently from the learning. More information found here: ["Continuous control with deep reinforcement learning"](https://arxiv.org/abs/1509.02971)
+* Futher explanation: Given that the set of actions are continuous and not discrete, exploration methods based on random uniform sampling would not yield the best results. This was an advantage that off-policy DDPG algorithm offers when treating the problem of exploration independently from the learning. More information found here: ["Continuous control with deep reinforcement learning"](https://arxiv.org/abs/1509.02971). Even though the paper suggests different hyperparameters that applied above, those did not perform well in my project. 
 
 
 ```
 class OUNoise:
-    def __init__(self, size, seed, mu=0., theta=0.15, sigma=0.2):
+
+    def __init__(self, size, seed, mu=0., theta=0.15, sigma=0.1):
         """Initialize parameters and noise process."""
         self.mu = mu * np.ones(size)
         self.theta = theta
@@ -192,8 +187,6 @@ class OUNoise:
         return self.state
 
 ```
-
-
 
 In ```class ReplayBuffer():``` you will implement a fixed-size buffer to store experience tuples and it will allow to add an experience step to the memory and to  to randomly sample a batch of experience steps for the learning:
 
@@ -241,8 +234,8 @@ Note that additional comment is found in the python code.
 * Arm_ContinousControl.ipynb : This Jupyter notebooks allows to import packages, examine environment, take random actions, train the agent using DDPG, visualize in unity when agents are training and after training, and the training performance in a plot. 
 
 ### Performance of the agent
-The following parameters were set: eps_start=1.0, eps_end=0.01 and eps_decay=0.995. 
-![](results/run12302020.JPG)
+After a lot of trial an error by changing hyperparemeter (see first section) and added BATCHNORM1D I was able to obtain the following results:
+![](results/run01092021.JPG)
 
 ### Ideas for Future Work
 * Extending to multilple agents

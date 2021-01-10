@@ -4,7 +4,7 @@
 This project is part of the second assignment of the Udacity Deep Reinforcement Learning Nanodegree. 
 
 Here is a GIF of my trained agent: 
-
+![](results/trained_reacher01092021.gif)
 
 ## Introduction
 This project trains a double-jointed arm to move to target locations
