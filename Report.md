@@ -6,18 +6,8 @@ The high-level steps taken in training an agent following the '<Arm_ContinousCon
 
 * Step 1: Importing packages and the Unity environment
 * Step 2: Evaluate the state and action space
-* Step 3: Establish baseline using a random action policy. 
-* Step 4: Implement learning DDPG algorithm: 
-	* Initialize the replay memory
-	* Initialize action-value function with random weights
-	* Initialize target action-value weights
-	* Choose an action using epsilon-greedy methods
-	* Perform an action
-	* Measure reward	
-	* Prepare next state and store experience tuple
-	* Obtain random minibatch of tuples
-	* Set target and update 
-The task is episodic, and in order to solve the environment, the agent must get an average score of +30 over 100 consecutive episodes
+* Step 3: Establish baseline using a random action policy
+* Step 4: Implement learning DDPG algorithm
 * Step 5: Loading the trained model into the environment to watch it perform
 
 ### Learning Algorithm & Code Structure :
@@ -29,16 +19,11 @@ The code consists of :
 * model.py : Here is where the Actor-Critic policy NN architectures are defined. There are two fully connected Deep Neural Network using the PyTorch Framework. It uses a forward neural netowrk architecture with reLu activation functions: '<fc1_units=256, fc2_units=128>.'
 
 * ddpg_agent.py : Here is where the learning algorithm is implemented: 
-	* Initialize an agent object
-	* Return actions for given state as per current policy
-	* Update value parameters using given batch of experience tuples or model parameters
-	* Initialize a ReplayBuffer
-	* Randomly sample a batch of experiences from memory
 
 You will start by specifying the Hyperparameters:
 ```
 BUFFER_SIZE = int(1e5)  # replay buffer size
-BATCH_SIZE = 512        # minibatch size
+BATCH_SIZE = 128        # minibatch size
 GAMMA = 0.99            # discount factor
 TAU = 1e-3              # for soft update of target parameters
 LR_ACTOR = 1e-4         # learning rate of the actor 
@@ -241,7 +226,7 @@ Note that additional comment is found in the python code.
 * Arm_ContinousControl.ipynb : This Jupyter notebooks allows to import packages, examine environment, take random actions, train the agent using DDPG, visualize in unity when agents are training and after training, and the training performance in a plot. 
 
 ### Performance of the agent
-The following parameters were set: eps_start=1.0, eps_end=0.01 and eps_decay=0.995. 
+After a lot of trial an error by changing hyperparemeter (see first section) and added BATCHNORM1D I was able to obtain the following results:
 ![](results/run12302020.JPG)
 
 ### Ideas for Future Work
