@@ -234,7 +234,8 @@ Note that additional comment is found in the python code.
 * Arm_ContinousControl.ipynb : This Jupyter notebooks allows to import packages, examine environment, take random actions, train the agent using DDPG, visualize in unity when agents are training and after training, and the training performance in a plot. 
 
 ### Performance of the agent
-After a lot of trial an error by changing hyperparemeter (see first section) and added BATCHNORM1D I was able to obtain the following results:
+After a lot of trial an error by changing hyperparemeters (see first section) and adding BATCHNORM1D in the NN architecture, I was able to obtain the following results:
+
 ![](results/run01092021.JPG)
 
 ### Ideas for Future Work
